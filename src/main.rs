@@ -15,12 +15,11 @@ struct Left;
 #[derive(Component)]
 struct Right;
 
-
 #[derive(Component)]
 struct Ball;
 
 #[derive(Component)]
-struct Dir(f32,f32);
+struct Dir(f32, f32);
 
 fn main() {
     App::new()
@@ -42,37 +41,46 @@ fn setup(mut commands: Commands) {
     };
     let circle = shapes::Circle {
         radius: 10.0,
-        center: Vec2::new(0.0,0.0)
+        center: Vec2::new(0.0, 0.0),
     };
-    let dirs: [f32;2] = [-1.0,1.0];
+    let dirs: [f32; 2] = [-1.0, 1.0];
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-    commands.spawn_bundle(GeometryBuilder::build_as(
-            &rect, 
-            DrawMode::Fill(
-                FillMode {
-                    options: FillOptions::DEFAULT,
-                    color: Color::rgb(0.75,0.75,0.75),
-                }),
-                Transform::from_xyz(-600.0,0.0,0.0)))
-        .insert(Paddle).insert(Left);
-    commands.spawn_bundle(GeometryBuilder::build_as(
-            &rect, 
-            DrawMode::Fill(
-                FillMode {
-                    options: FillOptions::DEFAULT,
-                    color: Color::rgb(0.75,0.75,0.75),
-                }),
-                Transform::from_xyz(600.0,0.0,0.0)))
-        .insert(Paddle).insert(Right);
-    commands.spawn_bundle(GeometryBuilder::build_as(
-            &circle, 
-            DrawMode::Fill(
-                FillMode {
-                    options: FillOptions::DEFAULT,
-                    color: Color::rgb(0.75,0.75,0.75),
-                }),
-                Transform::from_xyz(0.0,0.0,0.0)))
-        .insert(Ball).insert(Dir(*dirs.choose(&mut rand::thread_rng()).unwrap() as f32,*dirs.choose(&mut rand::thread_rng()).unwrap() as f32));
+    commands
+        .spawn_bundle(GeometryBuilder::build_as(
+            &rect,
+            DrawMode::Fill(FillMode {
+                options: FillOptions::DEFAULT,
+                color: Color::rgb(0.75, 0.75, 0.75),
+            }),
+            Transform::from_xyz(-600.0, 0.0, 0.0),
+        ))
+        .insert(Paddle)
+        .insert(Left);
+    commands
+        .spawn_bundle(GeometryBuilder::build_as(
+            &rect,
+            DrawMode::Fill(FillMode {
+                options: FillOptions::DEFAULT,
+                color: Color::rgb(0.75, 0.75, 0.75),
+            }),
+            Transform::from_xyz(600.0, 0.0, 0.0),
+        ))
+        .insert(Paddle)
+        .insert(Right);
+    commands
+        .spawn_bundle(GeometryBuilder::build_as(
+            &circle,
+            DrawMode::Fill(FillMode {
+                options: FillOptions::DEFAULT,
+                color: Color::rgb(0.75, 0.75, 0.75),
+            }),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+        ))
+        .insert(Ball)
+        .insert(Dir(
+            *dirs.choose(&mut rand::thread_rng()).unwrap() as f32,
+            *dirs.choose(&mut rand::thread_rng()).unwrap() as f32,
+        ));
 }
 
 fn left_movement(
@@ -82,17 +90,15 @@ fn left_movement(
 ) {
     let mut pos = query.single_mut();
     let mut dir = 0.0;
-    
+
     if keyboard_input.pressed(KeyCode::W) {
         dir = 1.0;
-    }
-    else if keyboard_input.pressed(KeyCode::S) {
+    } else if keyboard_input.pressed(KeyCode::S) {
         dir = -1.0;
-    }
-    else {
+    } else {
         dir = 0.0;
     }
-    
+
     pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
 
     if pos.translation.y > 280.0 {
@@ -110,17 +116,15 @@ fn right_movement(
 ) {
     let mut pos = query.single_mut();
     let mut dir = 0.0;
-    
+
     if keyboard_input.pressed(KeyCode::Up) {
         dir = 1.0;
-    }
-    else if keyboard_input.pressed(KeyCode::Down) {
+    } else if keyboard_input.pressed(KeyCode::Down) {
         dir = -1.0;
-    }
-    else {
+    } else {
         dir = 0.0;
     }
-    
+
     pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
 
     if pos.translation.y > 280.0 {
@@ -134,11 +138,11 @@ fn right_movement(
 fn ball_physics(
     time: Res<Time>,
     mut ball_query: Query<&mut Transform, With<Ball>>,
-    mut dir_query: Query<&mut Dir>
+    mut dir_query: Query<&mut Dir>,
 ) {
     let mut pos = ball_query.single_mut();
     let mut dir = dir_query.single_mut();
-    let dirs = [-1.0,1.0];
+    let dirs = [-1.0, 1.0];
 
     if pos.translation.y > 350.0 {
         pos.translation.y = 350.0;
@@ -161,21 +165,23 @@ fn ball_physics(
         dir.1 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
     }
 
-
     pos.translation.x += dir.0 * BALL_SPEED * time.delta_seconds();
-    pos.translation.y += dir.1 * BALL_SPEED * time.delta_seconds(); 
-    
+    pos.translation.y += dir.1 * BALL_SPEED * time.delta_seconds();
 }
 
 fn collision(
     ball_query: Query<&Transform, With<Ball>>,
     paddle_query: Query<&Transform, With<Paddle>>,
-    mut dir_query: Query<&mut Dir>
+    mut dir_query: Query<&mut Dir>,
 ) {
     let ball = ball_query.single();
     let mut dir = dir_query.single_mut();
     for paddle in paddle_query.iter() {
-        if (ball.translation.x >= (paddle.translation.x - 15.0) && ball.translation.x <= (paddle.translation.x + 15.0)) &&(ball.translation.y >= (paddle.translation.y - (150.0/2.0)) && ball.translation.y <= (paddle.translation.y + (150.0/2.0))) {
+        if (ball.translation.x >= (paddle.translation.x - 15.0)
+            && ball.translation.x <= (paddle.translation.x + 15.0))
+            && (ball.translation.y >= (paddle.translation.y - (150.0 / 2.0))
+                && ball.translation.y <= (paddle.translation.y + (150.0 / 2.0)))
+        {
             dir.0 = -dir.0;
             dir.1 = -dir.1;
         }
