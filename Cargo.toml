@@ -1,0 +1,16 @@
+[package]
+name = "pong-bevy"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = "0.7.0"
+bevy_prototype_lyon = "0.5.0"
+impacted = { version = "1", features = ["bevy-07"] }
+rand = { version = "0.8.5", features = ["small_rng"] }
+
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"
+
