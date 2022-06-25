@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
-use impacted::CollisionShape;
 use rand::seq::SliceRandom;
 
 const PADDLE_SPEED: f32 = 275.0;
@@ -21,9 +20,15 @@ struct Ball;
 #[derive(Component)]
 struct Dir(f32, f32);
 
+struct Scoreboard {
+    p1: usize,
+    p2: usize,
+}
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
+        .insert_resource(Scoreboard { p1: 0, p2:0 })
         .add_plugins(DefaultPlugins)
         .add_plugin(ShapePlugin)
         .add_startup_system(setup)
@@ -31,10 +36,11 @@ fn main() {
         .add_system(right_movement)
         .add_system(ball_physics)
         .add_system(collision)
+        .add_system(scoreboard)
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rect = shapes::Rectangle {
         extents: Vec2::new(15.0, 150.0),
         origin: shapes::RectangleOrigin::Center,
@@ -81,6 +87,49 @@ fn setup(mut commands: Commands) {
             *dirs.choose(&mut rand::thread_rng()).unwrap() as f32,
             *dirs.choose(&mut rand::thread_rng()).unwrap() as f32,
         ));
+    commands
+        .spawn_bundle(Text2dBundle {  // Use `Text` directly
+            text: Text {
+                // Construct a `Vec` of `TextSection`s
+                sections: vec![
+                    TextSection {
+                        value: "P1: ".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::WHITE,
+                        },
+                    },
+                    TextSection {
+                        value: "0".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::GOLD,
+                        },
+                    },
+                    TextSection {
+                        value: " P2: ".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::WHITE,
+                        },
+                    },
+                    TextSection {
+                        value: "0".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::GOLD,
+                        },
+                    },
+                ],
+                ..default()
+            },
+            transform: Transform::from_xyz(-125.0, 350.0, 1.0),
+            ..default()
+        });
 }
 
 fn left_movement(
@@ -137,6 +186,7 @@ fn right_movement(
 
 fn ball_physics(
     time: Res<Time>,
+    mut scores: ResMut<Scoreboard>,
     mut ball_query: Query<&mut Transform, With<Ball>>,
     mut dir_query: Query<&mut Dir>,
 ) {
@@ -153,12 +203,14 @@ fn ball_physics(
         dir.1 = -1.0 * dir.1;
     }
     if pos.translation.x > 625.0 {
+        scores.p1 += 1;
         pos.translation.y = 0.0;
         pos.translation.x = 0.0;
         dir.0 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
         dir.1 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
     }
     if pos.translation.x < -625.0 {
+        scores.p2 += 1;
         pos.translation.y = 0.0;
         pos.translation.x = 0.0;
         dir.0 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
@@ -186,4 +238,10 @@ fn collision(
             dir.1 = -dir.1;
         }
     }
+}
+
+fn scoreboard(scores: Res<Scoreboard>, mut scoreboard_query: Query<&mut Text>) {
+    let mut scoreboard = scoreboard_query.single_mut();
+    scoreboard.sections[1].value = format!("{}", scores.p1);
+    scoreboard.sections[3].value = format!("{}", scores.p2);
 }
