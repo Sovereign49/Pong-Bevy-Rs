@@ -8,5 +8,7 @@ To run the app use `trunk build` it will build the server into ./dist
 
 then copy the assets folder into ./dist as well and serve it with your web server of choice (I personally used python)
 
+I recomend testing it natively if possible however using `cargo run`
+
 Have fun!.
 
