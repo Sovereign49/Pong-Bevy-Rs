@@ -31,6 +31,7 @@ fn main() {
         .add_system(left_movement)
         .add_system(right_movement)
         .add_system(ball_physics)
+        .add_system(collision)
         .run();
 }
 
@@ -53,7 +54,7 @@ fn setup(mut commands: Commands) {
                     color: Color::rgb(0.75,0.75,0.75),
                 }),
                 Transform::from_xyz(-600.0,0.0,0.0)))
-        .insert(CollisionShape::new_rectangle(15.0,150.0)).insert(Paddle).insert(Left);
+        .insert(Paddle).insert(Left);
     commands.spawn_bundle(GeometryBuilder::build_as(
             &rect, 
             DrawMode::Fill(
@@ -62,7 +63,7 @@ fn setup(mut commands: Commands) {
                     color: Color::rgb(0.75,0.75,0.75),
                 }),
                 Transform::from_xyz(600.0,0.0,0.0)))
-        .insert(CollisionShape::new_rectangle(15.0,150.0)).insert(Paddle).insert(Right);
+        .insert(Paddle).insert(Right);
     commands.spawn_bundle(GeometryBuilder::build_as(
             &circle, 
             DrawMode::Fill(
@@ -71,7 +72,7 @@ fn setup(mut commands: Commands) {
                     color: Color::rgb(0.75,0.75,0.75),
                 }),
                 Transform::from_xyz(0.0,0.0,0.0)))
-        .insert(CollisionShape::new_circle(10.0)).insert(Ball).insert(Dir(*dirs.choose(&mut rand::thread_rng()).unwrap() as f32,*dirs.choose(&mut rand::thread_rng()).unwrap() as f32));
+        .insert(Ball).insert(Dir(*dirs.choose(&mut rand::thread_rng()).unwrap() as f32,*dirs.choose(&mut rand::thread_rng()).unwrap() as f32));
 }
 
 fn left_movement(
@@ -164,4 +165,19 @@ fn ball_physics(
     pos.translation.x += dir.0 * BALL_SPEED * time.delta_seconds();
     pos.translation.y += dir.1 * BALL_SPEED * time.delta_seconds(); 
     
+}
+
+fn collision(
+    ball_query: Query<&Transform, With<Ball>>,
+    paddle_query: Query<&Transform, With<Paddle>>,
+    mut dir_query: Query<&mut Dir>
+) {
+    let ball = ball_query.single();
+    let mut dir = dir_query.single_mut();
+    for paddle in paddle_query.iter() {
+        if (ball.translation.x >= (paddle.translation.x - 15.0) && ball.translation.x <= (paddle.translation.x + 15.0)) &&(ball.translation.y >= (paddle.translation.y - (150.0/2.0)) && ball.translation.y <= (paddle.translation.y + (150.0/2.0))) {
+            dir.0 = -dir.0;
+            dir.1 = -dir.1;
+        }
+    }
 }
