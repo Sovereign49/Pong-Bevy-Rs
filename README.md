@@ -4,4 +4,9 @@ It is written in bevy with a few libraries to ease the workflow. any tips are ap
 --
 The app was built with wasm in mind so to run it I have used [trunk](https://trunkrs.dev/)
 
-To run the app use `trunk serve` it will watch for changes and update the web server apropriately
+To run the app use `trunk build` it will build the server into ./dist
+
+then copy the assets folder into ./dist as well and serve it with your web server of choice (I personally used python)
+
+Have fun!.
+
