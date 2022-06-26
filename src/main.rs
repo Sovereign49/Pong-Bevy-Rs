@@ -2,8 +2,13 @@ use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 use rand::seq::SliceRandom;
 
-const PADDLE_SPEED: f32 = 275.0;
-const BALL_SPEED: f32 = 200.0;
+const PADDLE_SPEED: f32 = 375.0;
+const BALL_SPEED: f32 = 300.0;
+
+enum GameState {
+    Start,
+    Game,
+}
 
 #[derive(Component)]
 struct Paddle;
@@ -18,7 +23,15 @@ struct Right;
 struct Ball;
 
 #[derive(Component)]
+struct Score;
+
+#[derive(Component)]
+struct Title;
+
+#[derive(Component)]
 struct Dir(f32, f32);
+
+struct State(GameState);
 
 struct Scoreboard {
     p1: usize,
@@ -28,15 +41,18 @@ struct Scoreboard {
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
-        .insert_resource(Scoreboard { p1: 0, p2:0 })
+        .insert_resource(Scoreboard { p1: 0, p2: 0 })
+        .insert_resource(State(GameState::Start))
         .add_plugins(DefaultPlugins)
         .add_plugin(ShapePlugin)
         .add_startup_system(setup)
+        .add_system(start_manager)
         .add_system(left_movement)
         .add_system(right_movement)
         .add_system(ball_physics)
         .add_system(collision)
         .add_system(scoreboard)
+        .add_system(end_manager)
         .run();
 }
 
@@ -88,7 +104,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             *dirs.choose(&mut rand::thread_rng()).unwrap() as f32,
         ));
     commands
-        .spawn_bundle(Text2dBundle {  // Use `Text` directly
+        .spawn_bundle(Text2dBundle {
+            // Use `Text` directly
             text: Text {
                 // Construct a `Vec` of `TextSection`s
                 sections: vec![
@@ -129,96 +146,159 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
             transform: Transform::from_xyz(-125.0, 350.0, 1.0),
             ..default()
-        });
+        })
+        .insert(Score);
+    commands
+        .spawn_bundle(Text2dBundle {
+            // Use `Text` directly
+            text: Text {
+                // Construct a `Vec` of `TextSection`s
+                sections: vec![
+                    TextSection {
+                        value: "     Pong!\n ".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 120.0,
+                            color: Color::WHITE,
+                        },
+                    },
+                    TextSection {
+                        value: "Press Space to Start".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: Color::GOLD,
+                        },
+                    },
+                ],
+                ..default()
+            },
+            transform: Transform::from_xyz(-250.0, 150.0, 0.0),
+            ..default()
+        })
+        .insert(Title);
+}
+
+fn start_manager(
+    mut state: ResMut<State>,
+    mut scores: ResMut<Scoreboard>,
+    input: Res<Input<KeyCode>>,
+    mut title_query: Query<&mut Transform, With<Title>>,
+) {
+    let mut title = title_query.single_mut();
+    if let GameState::Start = state.0 {
+        title.translation.y = 150.0;
+        if input.pressed(KeyCode::Space) {
+            title.translation.y = -10000.0;
+            scores.p1 = 0;
+            scores.p2 = 0;
+            state.0 = GameState::Game;
+        }
+    }
+    else {
+        if scores.p1 >= 10 || scores.p2 >=10 {
+            title.translation.y = 150.0;
+            state.0 = GameState::Start
+        }
+    }
 }
 
 fn left_movement(
     time: Res<Time>,
+    state: Res<State>,
     keyboard_input: Res<Input<KeyCode>>,
     mut query: Query<&mut Transform, With<Left>>,
 ) {
-    let mut pos = query.single_mut();
-    let mut dir = 0.0;
+    if let GameState::Game = state.0 {
+        let mut pos = query.single_mut();
+        let mut dir = 0.0;
 
-    if keyboard_input.pressed(KeyCode::W) {
-        dir = 1.0;
-    } else if keyboard_input.pressed(KeyCode::S) {
-        dir = -1.0;
-    } else {
-        dir = 0.0;
-    }
+        if keyboard_input.pressed(KeyCode::W) {
+            dir = 1.0;
+        } else if keyboard_input.pressed(KeyCode::S) {
+            dir = -1.0;
+        } else {
+            dir = 0.0;
+        }
 
-    pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
+        pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
 
-    if pos.translation.y > 280.0 {
-        pos.translation.y = 280.0;
-    }
-    if pos.translation.y < -280.0 {
-        pos.translation.y = -280.0
+        if pos.translation.y > 280.0 {
+            pos.translation.y = 280.0;
+        }
+        if pos.translation.y < -280.0 {
+            pos.translation.y = -280.0
+        }
     }
 }
 
 fn right_movement(
     time: Res<Time>,
+    state: Res<State>,
     keyboard_input: Res<Input<KeyCode>>,
     mut query: Query<&mut Transform, With<Right>>,
 ) {
-    let mut pos = query.single_mut();
-    let mut dir = 0.0;
+    if let GameState::Game = state.0 {
+        let mut pos = query.single_mut();
+        let mut dir = 0.0;
 
-    if keyboard_input.pressed(KeyCode::Up) {
-        dir = 1.0;
-    } else if keyboard_input.pressed(KeyCode::Down) {
-        dir = -1.0;
-    } else {
-        dir = 0.0;
-    }
+        if keyboard_input.pressed(KeyCode::Up) {
+            dir = 1.0;
+        } else if keyboard_input.pressed(KeyCode::Down) {
+            dir = -1.0;
+        } else {
+            dir = 0.0;
+        }
 
-    pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
+        pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
 
-    if pos.translation.y > 280.0 {
-        pos.translation.y = 280.0;
-    }
-    if pos.translation.y < -280.0 {
-        pos.translation.y = -280.0
+        if pos.translation.y > 280.0 {
+            pos.translation.y = 280.0;
+        }
+        if pos.translation.y < -280.0 {
+            pos.translation.y = -280.0
+        }
     }
 }
 
 fn ball_physics(
     time: Res<Time>,
+    state: Res<State>,
     mut scores: ResMut<Scoreboard>,
     mut ball_query: Query<&mut Transform, With<Ball>>,
     mut dir_query: Query<&mut Dir>,
 ) {
-    let mut pos = ball_query.single_mut();
-    let mut dir = dir_query.single_mut();
-    let dirs = [-1.0, 1.0];
+    if let GameState::Game = state.0 {
+        let mut pos = ball_query.single_mut();
+        let mut dir = dir_query.single_mut();
+        let dirs = [-1.0, 1.0];
 
-    if pos.translation.y > 350.0 {
-        pos.translation.y = 350.0;
-        dir.1 = -1.0 * dir.1;
-    }
-    if pos.translation.y < -350.0 {
-        pos.translation.y = -350.0;
-        dir.1 = -1.0 * dir.1;
-    }
-    if pos.translation.x > 625.0 {
-        scores.p1 += 1;
-        pos.translation.y = 0.0;
-        pos.translation.x = 0.0;
-        dir.0 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
-        dir.1 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
-    }
-    if pos.translation.x < -625.0 {
-        scores.p2 += 1;
-        pos.translation.y = 0.0;
-        pos.translation.x = 0.0;
-        dir.0 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
-        dir.1 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
-    }
+        if pos.translation.y > 350.0 {
+            pos.translation.y = 350.0;
+            dir.1 = -1.0 * dir.1;
+        }
+        if pos.translation.y < -350.0 {
+            pos.translation.y = -350.0;
+            dir.1 = -1.0 * dir.1;
+        }
+        if pos.translation.x > 625.0 {
+            scores.p1 += 1;
+            pos.translation.y = 0.0;
+            pos.translation.x = 0.0;
+            dir.0 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
+            dir.1 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
+        }
+        if pos.translation.x < -625.0 {
+            scores.p2 += 1;
+            pos.translation.y = 0.0;
+            pos.translation.x = 0.0;
+            dir.0 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
+            dir.1 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
+        }
 
-    pos.translation.x += dir.0 * BALL_SPEED * time.delta_seconds();
-    pos.translation.y += dir.1 * BALL_SPEED * time.delta_seconds();
+        pos.translation.x += dir.0 * BALL_SPEED * time.delta_seconds();
+        pos.translation.y += dir.1 * BALL_SPEED * time.delta_seconds();
+    }
 }
 
 fn collision(
@@ -240,8 +320,17 @@ fn collision(
     }
 }
 
-fn scoreboard(scores: Res<Scoreboard>, mut scoreboard_query: Query<&mut Text>) {
+fn scoreboard(scores: Res<Scoreboard>, mut scoreboard_query: Query<&mut Text, With<Score>>) {
     let mut scoreboard = scoreboard_query.single_mut();
     scoreboard.sections[1].value = format!("{}", scores.p1);
     scoreboard.sections[3].value = format!("{}", scores.p2);
+}
+
+fn end_manager(scores: Res<Scoreboard>, mut state: ResMut<State>, mut query: Query<&mut Transform, With<Paddle>>) {
+    if scores.p1 >= 10 || scores.p2 >= 10 {
+        for mut pos in query.iter_mut() {
+            pos.translation.y = 0.0;
+        }
+        state.0 = GameState::Start;
+    }
 }
