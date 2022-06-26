@@ -1,10 +1,13 @@
+// Include Libraries
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 use rand::seq::SliceRandom;
 
+// Set up constant values
 const PADDLE_SPEED: f32 = 375.0;
 const BALL_SPEED: f32 = 300.0;
 
+//Set up resources and components
 enum GameState {
     Start,
     Game,
@@ -38,6 +41,7 @@ struct Scoreboard {
     p2: usize,
 }
 
+// Add all plugins and Resources
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
@@ -57,16 +61,20 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Create Shape for Paddles
     let rect = shapes::Rectangle {
         extents: Vec2::new(15.0, 150.0),
         origin: shapes::RectangleOrigin::Center,
     };
+    // Create Shape for Ball
     let circle = shapes::Circle {
         radius: 10.0,
         center: Vec2::new(0.0, 0.0),
     };
+    // Create list of directions that will be randomly chosen 
     let dirs: [f32; 2] = [-1.0, 1.0];
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    // Create Left Paddle
     commands
         .spawn_bundle(GeometryBuilder::build_as(
             &rect,
@@ -78,6 +86,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ))
         .insert(Paddle)
         .insert(Left);
+    // Create Right Paddle
     commands
         .spawn_bundle(GeometryBuilder::build_as(
             &rect,
@@ -89,6 +98,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ))
         .insert(Paddle)
         .insert(Right);
+    // Create Ball
     commands
         .spawn_bundle(GeometryBuilder::build_as(
             &circle,
@@ -103,11 +113,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             *dirs.choose(&mut rand::thread_rng()).unwrap() as f32,
             *dirs.choose(&mut rand::thread_rng()).unwrap() as f32,
         ));
+    // Create Scoreboard
     commands
         .spawn_bundle(Text2dBundle {
-            // Use `Text` directly
             text: Text {
-                // Construct a `Vec` of `TextSection`s
                 sections: vec![
                     TextSection {
                         value: "P1: ".to_string(),
@@ -148,6 +157,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         })
         .insert(Score);
+    // Create Title Text
     commands
         .spawn_bundle(Text2dBundle {
             // Use `Text` directly
@@ -179,6 +189,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Title);
 }
 
+// Set up start screen
 fn start_manager(
     mut state: ResMut<State>,
     mut scores: ResMut<Scoreboard>,
@@ -187,18 +198,14 @@ fn start_manager(
 ) {
     let mut title = title_query.single_mut();
     if let GameState::Start = state.0 {
+        // Move title to Screen
         title.translation.y = 150.0;
         if input.pressed(KeyCode::Space) {
+            // Set up Game by reseting the score and moving the title off screen, then changing the game state
             title.translation.y = -10000.0;
             scores.p1 = 0;
             scores.p2 = 0;
             state.0 = GameState::Game;
-        }
-    }
-    else {
-        if scores.p1 >= 10 || scores.p2 >=10 {
-            title.translation.y = 150.0;
-            state.0 = GameState::Start
         }
     }
 }
@@ -213,6 +220,7 @@ fn left_movement(
         let mut pos = query.single_mut();
         let mut dir = 0.0;
 
+        // Change the paddle Direction depending on what key is pressed
         if keyboard_input.pressed(KeyCode::W) {
             dir = 1.0;
         } else if keyboard_input.pressed(KeyCode::S) {
@@ -221,8 +229,10 @@ fn left_movement(
             dir = 0.0;
         }
 
+        // Move paddle
         pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
 
+        // Clamp paddle to screen size
         if pos.translation.y > 280.0 {
             pos.translation.y = 280.0;
         }
@@ -242,6 +252,7 @@ fn right_movement(
         let mut pos = query.single_mut();
         let mut dir = 0.0;
 
+        // Change the paddle Direction depending on what key is pressed
         if keyboard_input.pressed(KeyCode::Up) {
             dir = 1.0;
         } else if keyboard_input.pressed(KeyCode::Down) {
@@ -250,8 +261,10 @@ fn right_movement(
             dir = 0.0;
         }
 
+        // Move paddle
         pos.translation.y += dir * PADDLE_SPEED * time.delta_seconds();
 
+        // Clamp paddle to screen size
         if pos.translation.y > 280.0 {
             pos.translation.y = 280.0;
         }
@@ -273,6 +286,7 @@ fn ball_physics(
         let mut dir = dir_query.single_mut();
         let dirs = [-1.0, 1.0];
 
+        // Set up collisions with top and bottom sides of the screen
         if pos.translation.y > 350.0 {
             pos.translation.y = 350.0;
             dir.1 = -1.0 * dir.1;
@@ -281,6 +295,7 @@ fn ball_physics(
             pos.translation.y = -350.0;
             dir.1 = -1.0 * dir.1;
         }
+        // Reset the ball & Increment the score when ball passes a paddle 
         if pos.translation.x > 625.0 {
             scores.p1 += 1;
             pos.translation.y = 0.0;
@@ -295,7 +310,8 @@ fn ball_physics(
             dir.0 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
             dir.1 = *dirs.choose(&mut rand::thread_rng()).unwrap() as f32;
         }
-
+        
+        // Move the ball
         pos.translation.x += dir.0 * BALL_SPEED * time.delta_seconds();
         pos.translation.y += dir.1 * BALL_SPEED * time.delta_seconds();
     }
@@ -309,6 +325,7 @@ fn collision(
     let ball = ball_query.single();
     let mut dir = dir_query.single_mut();
     for paddle in paddle_query.iter() {
+        // Check if ball is within paddle bounds
         if (ball.translation.x >= (paddle.translation.x - 15.0)
             && ball.translation.x <= (paddle.translation.x + 15.0))
             && (ball.translation.y >= (paddle.translation.y - (150.0 / 2.0))
@@ -322,11 +339,13 @@ fn collision(
 
 fn scoreboard(scores: Res<Scoreboard>, mut scoreboard_query: Query<&mut Text, With<Score>>) {
     let mut scoreboard = scoreboard_query.single_mut();
+    // Update scoreboard text with current score
     scoreboard.sections[1].value = format!("{}", scores.p1);
     scoreboard.sections[3].value = format!("{}", scores.p2);
 }
 
 fn end_manager(scores: Res<Scoreboard>, mut state: ResMut<State>, mut query: Query<&mut Transform, With<Paddle>>) {
+    // Detect it there has been a game over
     if scores.p1 >= 10 || scores.p2 >= 10 {
         for mut pos in query.iter_mut() {
             pos.translation.y = 0.0;
